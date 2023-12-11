@@ -1,14 +1,16 @@
-﻿var (instructions, path) = GetInput();
+﻿using Day_8;
+using System.Collections.Concurrent;
+
+var (instructions, paths) = GetInput();
 
 long steps = 0;
 var currentLocation = "AAA";
 
-while(currentLocation != "ZZZ")
+while (currentLocation != "ZZZ")
 {
-
-    foreach(var instruction in instructions)
+    foreach (var instruction in instructions)
     {
-        var nextLocation = path[currentLocation][instruction];
+        var nextLocation = paths[currentLocation][instruction];
         steps++;
         currentLocation = nextLocation;
         if (currentLocation == "ZZZ")
@@ -16,53 +18,59 @@ while(currentLocation != "ZZZ")
             Console.WriteLine($"Found ZZZ in {steps} steps");
             break;
         }
-        
     }
 }
 
 // part 2
 
-steps = 0;
-var currentLocations = path.Keys.Where(location=> location.EndsWith("A")).ToArray();
-
-while (!currentLocations.All(location=>location.EndsWith("Z")))
+Jump GetJumpPathToZ(string location, int instructionIndex)
 {
-    foreach (var instruction in instructions)
+    var currentLocation = location;
+    var firstIteration = true;
+    long steps = 0;
+    while (true)
     {
-        bool endsWithZ = true;
-        for (int i = 0; i < currentLocations.Length; i++)
+        int startIndex = firstIteration ? instructionIndex : 0;
+        for (int i = startIndex; i < instructions!.Length; i++)
         {
-            currentLocations[i] = path[currentLocations[i]][instruction];
-            if (!currentLocations[i].EndsWith("Z"))
+            var nextLocation = paths![currentLocation][instructions[i]];
+            steps++;
+            currentLocation = nextLocation;
+            if (currentLocation[2] == 'Z')
             {
-                endsWithZ = false;
+                return new Jump(steps, currentLocation);
             }
-        }
-        steps++;
 
-        if (steps % 100_000_000 == 0)
-        {
-            Console.WriteLine($"Steps so far: {steps}");
-        }
-
-        if (endsWithZ)
-        {
-            Console.WriteLine($"Found ..Z location for all locations in {steps} steps");
-            break;
+            firstIteration = false;
         }
     }
+
+    throw new InvalidOperationException("Should not get here");
 }
+
+// for each starting point of ..A to ..Z it takes the same number of steps as from ..Z to ..Z after that.
+// figure out the lowest-common-multiple of the steps
+var lookup = new ConcurrentDictionary<string, Jump>();
+
+foreach (var junction in paths.Where(p => p.Key.EndsWith('Z')))
+{
+    lookup.TryAdd(junction.Key, GetJumpPathToZ(junction.Key, 0));
+}
+
+var lcmInput = lookup.Values.Select(j => j.StepCount).ToList();
+var lcm = new LCM(lcmInput);
+
+Console.WriteLine("lcm: " +lcm.getLCM());
+
 
 Console.WriteLine("done");
 Console.ReadLine();
 
-
-
 (int[] instructions, Dictionary<string, string[]> path) GetInput()
 {
     var instructionInput = "LRLRLLRRLRRRLRLRRLRLLRRLRRRLRLRLRLRRLRLLRRRLRRRLLRRLRRLRLRRRLLLRRLRLRLRLRLRLLRRRLRLRRRLRRRLRRRLRRRLRRRLRRRLRRRLRRLRRRLLRLLRRLRRLRRLRRRLLRLRRLRLRLRRLLRLRRRLRRLLRLRLRRRLRRLRRLRRLRLLRLRRRLLLRRRLLLLRRLRRRLLLRRLLRLRLRLLLRRRLLRRRLLLRLRRLLRRRLRRRLRLLRRRLRLRLRLLRRLLRRLRRRLRLRRRLRRLRLRRLRRRR";
-    var parsedInstructions = instructionInput.Select(c=> c == 'L' ? 0 : 1).ToArray();
-        
+    var parsedInstructions = instructionInput.Select(c => c == 'L' ? 0 : 1).ToArray();
+
     var pathInput = @"
 SGR = (JLL, VRV)
 XDC = (TBG, KNF)
@@ -832,9 +840,11 @@ KCM = (CCP, NTS)
 GBB = (SRK, VBB)";
 
     var parsedPath = pathInput.Split("\r\n", StringSplitOptions.RemoveEmptyEntries)
-        .ToDictionary(l=>              l[..3],
-        l=> new string[2] { l.Substring(7, 3), l.Substring(12, 3) }
+        .ToDictionary(l => l[..3],
+        l => new string[2] { l.Substring(7, 3), l.Substring(12, 3) }
         );
 
     return (parsedInstructions, parsedPath);
 }
+
+public record Jump(long StepCount, string Destination);
