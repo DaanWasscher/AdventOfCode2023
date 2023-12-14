@@ -3,8 +3,6 @@
 var grid = GetInput();
 var startingPoint = GetStart(grid);
 
-
-
 long steps = 1;
 Point startToSouthOrEastCurrentPoint = new Point(startingPoint.X, startingPoint.Y + 1);
 Point startToSouthOrEastPreviousPoint = startingPoint;
@@ -12,136 +10,225 @@ Point startToSouthOrEastPreviousPoint = startingPoint;
 Point startToNorthOrWestCurrentPoint = new Point(startingPoint.X, startingPoint.Y - 1);
 Point startToNorthOrWestPreviousPoint = startingPoint;
 
-// part 2 empty grid setup
-var grid2 = new char[grid.Length][];
-for (int i = 0; i < grid.Length; i++)
-{
-    grid2[i] = string.Empty.PadRight(grid[i].Length, '.').ToCharArray();
-}
-//
+// part 2 new grid double size 280x280
+var grid3 = GetDoubledGrid();
 
-grid2[startingPoint.Y][startingPoint.X] = 'X';
-grid2[startToNorthOrWestCurrentPoint.Y][startToNorthOrWestCurrentPoint.X] = 'X';
-grid2[startToSouthOrEastCurrentPoint.Y][startToSouthOrEastCurrentPoint.X] = 'X';
+//starting point and initial step in both directions are pre-filled in the new grid
+grid3[startingPoint.Y * 2][startingPoint.X * 2] = 'X';
+grid3[(startingPoint.Y * 2) - 1][startingPoint.X * 2] = 'X';
+grid3[(startingPoint.Y * 2) + 1][startingPoint.X * 2] = 'X';
+grid3[startToNorthOrWestCurrentPoint.Y * 2][startToNorthOrWestCurrentPoint.X * 2] = 'X';
+grid3[startToSouthOrEastCurrentPoint.Y * 2][startToSouthOrEastCurrentPoint.X * 2] = 'X';
 
 do
 {
     var startToNorthOrWestNextPoint = GetNextPoint(startToNorthOrWestCurrentPoint, startToNorthOrWestPreviousPoint);
     startToNorthOrWestPreviousPoint = startToNorthOrWestCurrentPoint;
     startToNorthOrWestCurrentPoint = startToNorthOrWestNextPoint;
-    grid2[startToNorthOrWestCurrentPoint.Y][startToNorthOrWestCurrentPoint.X] = grid[startToNorthOrWestCurrentPoint.Y][startToNorthOrWestCurrentPoint.X];
+    grid3[startToNorthOrWestCurrentPoint.Y * 2][startToNorthOrWestCurrentPoint.X * 2] = grid[startToNorthOrWestCurrentPoint.Y][startToNorthOrWestCurrentPoint.X];
+    var grid3Filler = GetDoubledGridFiller(startToNorthOrWestPreviousPoint, startToNorthOrWestCurrentPoint);
+    grid3[grid3Filler.point.Y][grid3Filler.point.X] = grid3Filler.fillerChar;
 
     var startToSouthOrEastNextPoint = GetNextPoint(startToSouthOrEastCurrentPoint, startToSouthOrEastPreviousPoint);
     startToSouthOrEastPreviousPoint = startToSouthOrEastCurrentPoint;
     startToSouthOrEastCurrentPoint = startToSouthOrEastNextPoint;
-    grid2[startToSouthOrEastCurrentPoint.Y][startToSouthOrEastCurrentPoint.X] = grid[startToSouthOrEastCurrentPoint.Y][startToSouthOrEastCurrentPoint.X];
+    grid3[startToSouthOrEastCurrentPoint.Y * 2][startToSouthOrEastCurrentPoint.X * 2] = grid[startToSouthOrEastCurrentPoint.Y][startToSouthOrEastCurrentPoint.X];
+    grid3Filler = GetDoubledGridFiller(startToSouthOrEastPreviousPoint, startToSouthOrEastCurrentPoint);
+    grid3[grid3Filler.point.Y][grid3Filler.point.X] = grid3Filler.fillerChar;
 
     steps++;
 }
-while (startToNorthOrWestCurrentPoint != startToSouthOrEastCurrentPoint );
+while (startToNorthOrWestCurrentPoint != startToSouthOrEastCurrentPoint);
+
+(Point point, char fillerChar) GetDoubledGridFiller(Point start, Point end)
+{
+    if (start.X == end.X)
+    {
+        // vertical movement
+        if (start.Y > end.Y)
+        {
+            // move north
+            return (new Point(start.X * 2, (start.Y * 2) - 1), '|');
+        }
+        else
+        {
+            // move south
+            return (new Point(start.X * 2, (start.Y * 2) + 1), '|');
+        }
+    }
+    else
+    {
+        // horizontal movement
+        if (start.X > end.X)
+        {
+            // move west
+            return (new Point((start.X * 2) - 1, start.Y * 2), '-');
+        }
+        else
+        {
+            // move east
+            return (new Point((start.X * 2) + 1, start.Y * 2), '-');
+        }
+    }
+}
 
 // part 1
 Console.WriteLine($"Steps: {steps}");
 
 // part 2
 int enclosedArea = 0;
-PrintGrid(grid2);
 
-// cleanup top to bottom
-Cleanup(grid2);
+var grid3Colors = GetDoubledColorGrid();
+//cleanup starts at the edges and works its way inwards and removes all connecting filler chars
+//the remaining filler chars are truly enclosed in the plot
+Cleanup(grid3, grid3Colors);
 
-PrintGrid(grid2);
-
-// count . chars, those are the enclosed area
-for (int i = 0; i < 140; i++)
+// count . chars, those are the enclosed area but only on even lines and columns (to undo the doubling of the grid)
+for (int i = 0; i < 280; i++)
 {
-    for (int ii = 0; ii < 140; ii++)
+    for (int ii = 0; ii < 280; ii++)
     {
-        if (grid2[i][ii] == '.')
+        if (i % 2 == 0 && ii % 2 == 0)
         {
-            enclosedArea++;
+            if (grid3[i][ii] == '.')
+            {
+                enclosedArea++;
+            }
         }
     }
 }
 
 Console.WriteLine($"Enclosed area: {enclosedArea}");
 
+char[][] GetDoubledGrid()
+{
+    var doubledGrid = new char[280][];
+    for (int i = 0; i < 280; i++)
+    {
+        doubledGrid[i] = string.Empty.PadRight(280, '.').ToCharArray();
+    }
 
-void Cleanup(char[][] grid2)
+    return doubledGrid;
+}
+
+ConsoleColor[][] GetDoubledColorGrid()
+{
+    var doubledGrid = new ConsoleColor[280][];
+    for (int i = 0; i < 280; i++)
+    {
+        doubledGrid[i] = new ConsoleColor[280];
+    }
+
+    return doubledGrid;
+}
+
+void Cleanup(char[][] grid, ConsoleColor[][] coloredGrid)
 {
     var cleanedSomething = false;
-    
+    int gridsize = grid.Length;
+    int color = 2;
+    int runs = 0;
     do
     {
         cleanedSomething = false;
 
         // cleanup top to bottom
-        for (int i = 0; i < 140; i++)
+        for (int i = 0; i < gridsize; i++)
         {
-            for (int ii = 0; ii < 140; ii++)
+            for (int ii = 0; ii < gridsize; ii++)
             {
-                if ((i == 0 || grid2[i - 1][ii] == ' ') && grid2[i][ii] == '.')
+                if ((i == 0 || grid[i - 1][ii] == 'o') && grid[i][ii] == '.')
                 {
-                    grid2[i][ii] = ' ';
+                    grid[i][ii] = 'o';
+                    coloredGrid[i][ii] = (ConsoleColor)color;
                     cleanedSomething = true;
                 }
             }
         }
 
         // cleanup left to right
-        for (int ii = 0; ii < 140; ii++)
+        for (int ii = 0; ii < gridsize; ii++)
         {
-            for (int i = 0; i < 140; i++)
+            for (int i = 0; i < gridsize; i++)
             {
-                if ((ii == 0 || grid2[i][ii-1] == ' ') && grid2[i][ii] == '.')
+                if ((ii == 0 || grid[i][ii - 1] == 'o') && grid[i][ii] == '.')
                 {
-                    grid2[i][ii] = ' ';
+                    grid[i][ii] = 'o';
+                    coloredGrid[i][ii] = (ConsoleColor)color;
                     cleanedSomething = true;
                 }
             }
         }
 
         // cleanup bottom to top
-        for (int i = 139; i >= 0; i--)
+        for (int i = gridsize - 1; i >= 0; i--)
         {
-            for (int ii = 139; ii >= 0; ii--)
+            for (int ii = gridsize - 1; ii >= 0; ii--)
             {
-                if ((i == 139 || grid2[i + 1][ii] == ' ') && grid2[i][ii] == '.')
+                if ((i == gridsize - 1 || grid[i + 1][ii] == 'o') && grid[i][ii] == '.')
                 {
-                    grid2[i][ii] = ' ';
+                    grid[i][ii] = 'o';
+                    coloredGrid[i][ii] = (ConsoleColor)color;
                     cleanedSomething = true;
                 }
             }
         }
 
         // right to left 
-        for (int ii = 139; ii >= 0; ii--)
+        for (int ii = gridsize - 1; ii >= 0; ii--)
         {
-            for (int i = 139; i >= 0; i--)
+            for (int i = gridsize - 1; i >= 0; i--)
             {
-                if ((ii == 139 || grid2[i][ii+1] == ' ') && grid2[i][ii] == '.')
+                if ((ii == gridsize - 1 || grid[i][ii + 1] == 'o') && grid[i][ii] == '.')
                 {
-                    grid2[i][ii] = ' ';
+                    grid[i][ii] = 'o';
+                    coloredGrid[i][ii] = (ConsoleColor)color;
                     cleanedSomething = true;
                 }
             }
         }
 
+        color++;
+        if (color > 4)
+        {
+            color = 2;
+        }
+        runs++;
+
+
     } while (cleanedSomething);
+
+
+    PrintGrid(grid, coloredGrid);
 }
 
 
-void PrintGrid(char[][] grid)
+void PrintGrid(char[][] grid, ConsoleColor[][]? gridColor = null)
 {
-    for (int i = 0; i < 140; i++)
+    for (int i = 0; i < grid.Length; i++)
     {
-        for (int ii = 0; ii < 140; ii++)
+        for (int ii = 0; ii < grid[i].Length; ii++)
         {
-            Console.Write(grid[i][ii]);
+            if (gridColor is not null)
+            {
+                Console.ForegroundColor = gridColor[i][ii] == 0 ? ConsoleColor.Black : (ConsoleColor)gridColor[i][ii];
+            }
+
+            if (Console.ForegroundColor == ConsoleColor.Black && grid[i][ii] != '.')
+            {
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write('█');
+            }
+            else
+            {
+                Console.Write(grid[i][ii]);
+            }
+            //Console.Write(grid[i][ii]);
         }
         Console.WriteLine();
     }
 
+    Console.ForegroundColor = ConsoleColor.White;
     Console.WriteLine();
     Console.WriteLine("--------------------------------------------------------------------");
     Console.WriteLine();
